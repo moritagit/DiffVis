@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 
 
+"""formatter.py
+
+Formats outputs of DiffVis.
+"""
+
+
 import html
 import unicodedata
 
@@ -13,7 +19,7 @@ def _get_char_width(char):
         return 1
 
 
-def _pad_letter(letter):
+def _pad_zenkaku_letter(letter):
     if letter in ['', ' ']:
         # zenkaku space
         return '　'
@@ -23,13 +29,22 @@ def _pad_letter(letter):
         return letter
 
 
+def _pad_hankaku_letter(letter):
+    if letter in ['', ' ']:
+        return ' '
+    elif _get_char_width(letter) == 1:
+        return letter
+    else:
+        raise ValueError(f'Input letter must be hankaku, but input was: {letter}')
+
+
 def _pad_sequence(text, length=0):
     result = []
     if text:
         for letter in text:
-            result.append(_pad_letter(letter))
+            result.append(_pad_zenkaku_letter(letter))
     else:
-        result.append(_pad_letter(text))
+        result.append(_pad_zenkaku_letter(text))
     if length:
         result += ['　'] * (length - len(result))
     result = ''.join(result)

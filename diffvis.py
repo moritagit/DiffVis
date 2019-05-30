@@ -46,7 +46,7 @@ def main():
 
     dv = DiffVis(source, target)
     dv.build()
-    print(dv.generate_comparison(mode='console', padding=padding))
+    print(dv.visualize(mode='console', padding=padding))
 
 
 def make_diff2blank(source, target, edit_history, blank='<blank>'):
