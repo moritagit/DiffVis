@@ -5,6 +5,109 @@ import sys
 import functools
 
 
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(
+        prog='edit_distance.py',
+        usage='python edit_distance.py -a path/to/access_token -n',
+        description='Calculate edit distance between two strings',
+        epilog='end',
+        add_help=True,
+        )
+    parser.add_argument(
+        'source',
+        help='source string',
+        action='store',
+        )
+    parser.add_argument(
+        'target',
+        help='target string',
+        action='store',
+        )
+    parser.add_argument(
+        '-n', '--normalize',
+        help='flag to normalize edit distance',
+        action='store_true',
+        required=False,
+        )
+    parser.add_argument(
+        '-a', '--all',
+        help='flag to output all the results',
+        action='store_true',
+        required=False,
+        )
+
+    args = parser.parse_args()
+    source = args.source
+    target = args.target
+    normalize = args.normalize
+    output_all = args.all
+
+    if not output_all:
+        distance = Levenshtein.measure(source, target, normalize=normalize)
+        print(distance)
+    else:
+        cost_table = Levenshtein.build_cost_table(source, target)
+        edit_history = Levenshtein.trace_back(cost_table)
+        dist = Levenshtein.measure(source, target, cost_table, normalize=False)
+        dist_norm = Levenshtein.measure(source, target, cost_table, normalize=True)
+        print(f'Levenshtein Distance: {dist}')
+        print(f'Normalized Levenshtein Distance: {dist_norm:.3f}')
+        print()
+        print(format_cost_table(source, target, cost_table))
+        print()
+        print(format_edit_history(edit_history))
+    return
+
+
+def format_cost_table(source, target, cost_table):
+    # error handling
+    __max_len_source_elem = max([len(elem) for elem in source])
+    __max_len_target_elem = max([len(elem) for elem in target])
+    if max(__max_len_source_elem, __max_len_target_elem) < 1:
+        raise ValueError('Elements of source and target sequences must be 1 or 0.')
+
+    # settings
+    m, n = len(source), len(target)
+    column_width = max(max([len(str(elem)) for elem in row]) for row in cost_table)
+    column_width += 2
+    cell_form = '{:^' + str(column_width) + '}'
+    line = '\n' + '-' * ((column_width+1) * (n+2) + 1) + '\n'
+
+    # generate
+    result = 'Cost Table'
+
+    # add target string
+    result += line
+    result += '|' + cell_form.format('') + '|'
+    result += cell_form.format('') + '|'
+    for j in range(n):
+        result += cell_form.format(target[j]) + '|'
+    result += line
+
+    # add source string and cost table
+    result += '|' + cell_form.format('') + '|'
+    for j in range(n+1):
+        value = cost_table[0][j]
+        result += cell_form.format(value) + '|'
+    result += line
+
+    for i in range(1, m+1):
+        result += '|' + cell_form.format(source[i-1]) + '|'
+        for j in range(n+1):
+            value = cost_table[i][j]
+            result += cell_form.format(value) + '|'
+        result += line
+    result = result[:-1]  # delete last \n
+    return result
+
+
+def format_edit_history(edit_history):
+    result = 'Edit History\n\t'
+    result += '\n\t'.join(edit_history)
+    return result
+
+
 class Levenshtein(object):
     """Calculates Levenshtein distance
     and makes edit history from cost table.
@@ -110,8 +213,8 @@ class Levenshtein(object):
         return cost_table
 
     @staticmethod
-    def build_edit_history(cost_table, i=0, j=0):
-        """Builds edit history from cost table.
+    def trace_back(cost_table, i=0, j=0):
+        """Traces back cost table and make edit history.
 
         Args:
             cost_table (tuple[tuple[int]]): Cost table.
@@ -193,3 +296,7 @@ class Levenshtein(object):
             ret = Levenshtein.search_edit_path(cost_table, m, n, i, j+1)
             if ret != None:
                 return ['insert'] + ret
+
+
+if __name__ == '__main__':
+    main()

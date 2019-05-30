@@ -1,8 +1,47 @@
 # -*- coding: utf-8 -*-
 
 
-from .levenshtein import Levenshtein
+from .edit_distance import Levenshtein, format_cost_table, format_edit_history
 from .formatter import ConsoleFormatter, HTMLFormatter, HTMLTabFormatter
+
+
+def make_diff2blank(source, target, edit_history, blank='<blank>'):
+    template = []
+    i, j = 0, 0
+    for operation in edit_history:
+        if operation == 'match':
+            template.append(source[i])
+            i += 1
+            j += 1
+        elif operation == 'replace':
+            template.append(blank)
+            i += 1
+            j += 1
+        elif operation == 'delete':
+            template.append(blank)
+            i += 1
+        elif operation == 'insert':
+            template.append(blank)
+            j += 1
+
+    if not template:
+        return template
+
+    # delete duplicates of <blank>
+    template_new = [template[0]]
+    for i in range(1, len(template)):
+        elem_now = template[i]
+        elem_last = template[i-1]
+        if (elem_now == blank) and (elem_last == blank):
+            continue
+        else:
+            template_new.append(elem_now)
+    template = template_new
+
+    # if only blank, return empty string
+    if template == [blank]:
+        template = ['']
+    return template
 
 
 class DiffVis(object):
@@ -19,7 +58,7 @@ class DiffVis(object):
 
     def build(self):
         self.cost_table = Levenshtein.build_cost_table(self.__source, self.__target)
-        self.edit_history = Levenshtein.build_edit_history(self.cost_table)
+        self.edit_history = Levenshtein.trace_back(self.cost_table)
 
     def distance(self, normalize=False):
         dist = Levenshtein.measure(
@@ -32,6 +71,23 @@ class DiffVis(object):
     def edit_distance(self):
         dist = len([operation for operation in self.edit_history if operation != 'match'])
         return dist
+
+    def template(self, use_str=False, blank='<blank>'):
+        tmp = make_diff2blank(
+            self.__source,
+            self.__target,
+            self.edit_history,
+            blank=blank,
+            )
+        if use_str:
+            tmp = ''.join(tmp)
+        return tmp
+
+    def format_cost_table(self):
+        return format_cost_table(self.__source, self.__target, self.cost_table)
+
+    def format_edit_history(self):
+        return format_edit_history(self.edit_history)
 
     def generate_comparison(self, mode='console', padding=True):
         mode = mode.lower()
