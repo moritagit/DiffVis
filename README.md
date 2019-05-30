@@ -3,7 +3,7 @@
 
 Visualizes difference between two sequences.
 
-![result](https://github.com/moritagit/DiffVis/blob/doc/figures/result_html_table.png "result")
+![result](https://github.com/moritagit/DiffVis/blob/doc/figures/result_html_table.PNG "result")
 
 
 
@@ -36,7 +36,7 @@ HTML(dv.visualize(mode='html', padding=True))
 
 If you tokenize the strings, output will be like:
 
-![result tokenized](https://github.com/moritagit/DiffVis/blob/doc/figures/result_tokenized_html_table.png "result tokenized")
+![result tokenized](https://github.com/moritagit/DiffVis/blob/doc/figures/result_tokenized_html_table.PNG "result tokenized")
 
 
 
