@@ -68,24 +68,24 @@ class Levenshtein(object):
         return cost_table
 
     @staticmethod
-    def build_cost_table(seq1, seq2):
+    def build_cost_table(source, target):
         """Builds cost table.
 
 
         Args:
-            seq1 (iterable): Source sequence.
-            seq2 (iterable): Target sequence.
+            source (iterable): Source sequence.
+            target (iterable): Target sequence.
 
         Returns:
             cost_table (tuple[tuple[int]]): Cost table.
         """
-        m, n = len(seq1), len(seq2)
+        m, n = len(source), len(target)
         cost_table = Levenshtein.init_cost_table(m, n)
         for i in range(1, m+1):
             for j in range(1, n+1):
                 cost_insert = cost_table[i-1][j] + Levenshtein.EDIT2COST['insert']
                 cost_delete =  cost_table[i][j-1] + Levenshtein.EDIT2COST['delete']
-                cost = 0 if (seq1[i-1] == seq2[j-1]) else Levenshtein.EDIT2COST['replace']
+                cost = 0 if (source[i-1] == target[j-1]) else Levenshtein.EDIT2COST['replace']
                 cost_replace = cost_table[i-1][j-1] + cost
                 cost_table[i][j] = min(cost_insert, cost_delete, cost_replace)
         cost_table = tuple([tuple(row) for row in cost_table])

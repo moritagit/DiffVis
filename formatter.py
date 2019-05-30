@@ -5,12 +5,43 @@ import html
 import unicodedata
 
 
+def _get_char_width(char):
+    char_type = unicodedata.east_asian_width(char)
+    if char_type in ['W', 'F']:
+        return 2
+    else:
+        return 1
+
+
+def _pad_letter(letter):
+    if letter in ['', ' ']:
+        # zenkaku space
+        return '　'
+    elif _get_char_width(letter) == 1:
+        return ' ' + letter
+    else:
+        return letter
+
+
+def _pad_sequence(text, length=0):
+    result = []
+    if text:
+        for letter in text:
+            result.append(_pad_letter(letter))
+    else:
+        result.append(_pad_letter(text))
+    if length:
+        result += ['　'] * (length - len(result))
+    result = ''.join(result)
+    return result
+
+
 class Formatter(object):
     def escape(self, text):
         """Escape special sequence."""
         return text
 
-    def pad(self, text):
+    def pad(self, text, length=0):
         """Pad sequence."""
         return text
 
@@ -22,8 +53,8 @@ class Formatter(object):
         """Arange."""
         return text
 
-    def output(self, text1, text2):
-        """Make output for comparison."""
+    def concatenate(self, text1, text2):
+        """Concatenate outputs for comparison."""
         return '\n'.join([text1, text2])
 
 
@@ -42,6 +73,9 @@ class HTMLFormatter(Formatter):
         text = html.escape(text)
         return text
 
+    def pad(self, text, length=0):
+        return _pad_sequence(text, length)
+
     def colorize(self, text, color):
         color_code = color.lower()
         if color_code not in HTMLFormatter.COLOR_CODE:
@@ -49,7 +83,7 @@ class HTMLFormatter(Formatter):
         text = f'<span style="color: {color_code};">{text}</span>'
         return text
 
-    def output(self, text1, text2):
+    def concatenate(self, text1, text2):
         text = f'{text1}<br>{text2}'
         return text
 
@@ -80,7 +114,7 @@ class HTMLTabFormatter(Formatter):
         text = f'<td style="text-align=center">{text}</td>'
         return text
 
-    def output(self, text1, text2):
+    def concatenate(self, text1, text2):
         text = f'<tr>{text1}</tr><tr>{text2}</tr>'
         text = f'<table style="table-layout: fixed;">{text}</table>'
         return text
@@ -102,23 +136,8 @@ class ConsoleFormatter(Formatter):
         'invisible': '\033[08m',
         'reverse': '\033[07m',
         }
-    def get_char_width(self, char):
-        char_type = unicodedata.east_asian_width(char)
-        if char_type in ['W', 'F']:
-            return 2
-        else:
-            return 1
-
-    def _pad(self, text):
-        if text in ['', ' ']:
-            return '  '
-        elif self.get_char_width(text) == 1:
-            return ' ' + text
-        else:
-            return text
-
-    def pad(self, text):
-        return text
+    def pad(self, text, length=0):
+        return _pad_sequence(text, length)
 
     def colorize(self, text, color):
         color_code = color.lower()
@@ -130,5 +149,5 @@ class ConsoleFormatter(Formatter):
     def form(self, text):
         return text
 
-    def output(self, text1, text2):
+    def concatenate(self, text1, text2):
         return '\n'.join([text1, text2])

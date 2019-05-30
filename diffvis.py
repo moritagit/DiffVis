@@ -8,8 +8,8 @@ from .formatter import ConsoleFormatter, HTMLFormatter, HTMLTabFormatter
 class DiffVis(object):
     COLOR_SETTINGS = {
         'base': 'green',
-        'correct': 'blue',
-        'wrong': 'red',
+        'source': 'red',
+        'target': 'blue',
         }
     def __init__(self, source, target):
         self.__source = source
@@ -33,7 +33,7 @@ class DiffVis(object):
         dist = len([operation for operation in self.edit_history if operation != 'match'])
         return dist
 
-    def generate_comparison(self, mode='console'):
+    def generate_comparison(self, mode='console', padding=True):
         mode = mode.lower()
         if mode in ['console']:
             formatter = ConsoleFormatter()
@@ -43,16 +43,20 @@ class DiffVis(object):
             formatter = HTMLTabFormatter()
         else:
             raise ValueError(f'Unknown mode: {mode}')
-        result = self._generate_comparison(formatter)
+        result = self._generate_comparison(formatter, padding=padding)
         return result
 
-    def _generate_comparison(self, formatter):
-        seq1 = self.__source
-        seq2 = self.__target
+    def _generate_comparison(self, formatter, padding=True):
+        source = self.__source
+        target = self.__target
+        color_base = DiffVis.COLOR_SETTINGS['base']
+        color_source = DiffVis.COLOR_SETTINGS['source']
+        color_target = DiffVis.COLOR_SETTINGS['target']
 
-        def _form(text, color):
+        def _form(text, color, length):
             text = formatter.escape(text)
-            text = formatter.pad(text)
+            if padding:
+                text = formatter.pad(text, length)
             text = formatter.colorize(text, color)
             text = formatter.form(text)
             return text
@@ -63,23 +67,27 @@ class DiffVis(object):
         result_target = ''
         for operation in self.edit_history:
             if operation == 'match':
-                result_source += _form(seq1[i], DiffVis.COLOR_SETTINGS['base'])
-                result_target += _form(seq2[j], DiffVis.COLOR_SETTINGS['base'])
+                length = max(len(source[i]), len(target[j]))
+                result_source += _form(source[i], color_base, length)
+                result_target += _form(target[j], color_base, length)
                 i += 1
                 j += 1
             elif operation == 'replace':
-                result_source += _form(seq1[i], DiffVis.COLOR_SETTINGS['wrong'])
-                result_target += _form(seq2[j], DiffVis.COLOR_SETTINGS['correct'])
+                length = max(len(source[i]), len(target[j]))
+                result_source += _form(source[i], color_source, length)
+                result_target += _form(target[j], color_target, length)
                 i += 1
                 j += 1
             elif operation == 'delete':
-                result_source += _form(seq1[i], DiffVis.COLOR_SETTINGS['wrong'])
-                result_target += _form(' ', DiffVis.COLOR_SETTINGS['base'])
+                length = len(source[i])
+                result_source += _form(source[i], color_source, length)
+                result_target += _form('', color_base, length)
                 i += 1
             elif operation == 'insert':
-                result_source += _form(' ', DiffVis.COLOR_SETTINGS['base'])
-                result_target += _form(seq2[j], DiffVis.COLOR_SETTINGS['correct'])
+                length = len(target[j])
+                result_source += _form('', color_base, length)
+                result_target += _form(target[j], color_target, length)
                 j += 1
 
-        result = formatter.output(result_source, result_target)
+        result = formatter.concatenate(result_source, result_target)
         return result
