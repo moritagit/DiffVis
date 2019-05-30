@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 
 
+"""edit_distance.py
+
+Calculates edit distance (Levenshtein distance).
+"""
+
+
 import sys
 import functools
 
@@ -61,6 +67,16 @@ def main():
 
 
 def format_cost_table(source, target, cost_table):
+    """Formats cost table.
+
+    Args:
+        source (string): Source string.
+        target (string): Target string.
+        cost_table (tuple[tuple[int]]): Padded cost table.
+
+    Returns:
+        result (str): Formatted cost table.
+    """
     # error handling
     __max_len_source_elem = max([len(elem) for elem in source])
     __max_len_target_elem = max([len(elem) for elem in target])
@@ -71,7 +87,7 @@ def format_cost_table(source, target, cost_table):
     m, n = len(source), len(target)
     column_width = max(max([len(str(elem)) for elem in row]) for row in cost_table)
     column_width += 2
-    cell_form = '{:^' + str(column_width) + '}'
+    cell_form = '{:>' + str(column_width) + '}'
     line = '\n' + '-' * ((column_width+1) * (n+2) + 1) + '\n'
 
     # generate
@@ -103,6 +119,14 @@ def format_cost_table(source, target, cost_table):
 
 
 def format_edit_history(edit_history):
+    """Formats edit history.
+
+    Args:
+        edit_history (tuple[str]): Edit history.
+
+    Returns:
+        result (str): Formatted edit history.
+    """
     result = 'Edit History\n\t'
     result += '\n\t'.join(edit_history)
     return result
@@ -134,6 +158,7 @@ class Levenshtein(object):
             normalize (bool):
                 Determines whether to normalize Levenshtein distance,
                 deviding by longer length of the input two sequences.
+                Defaults to False.
 
         Returns:
             distance (float): Levenshtein distance.
@@ -173,7 +198,6 @@ class Levenshtein(object):
     @staticmethod
     def build_cost_table(source, target):
         """Builds cost table.
-
 
         Args:
             source (iterable): Source sequence.
