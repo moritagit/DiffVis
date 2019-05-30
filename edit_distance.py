@@ -9,7 +9,7 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(
         prog='edit_distance.py',
-        usage='python edit_distance.py -a path/to/access_token -n',
+        usage='python edit_distance.py <source> <target> -n -a',
         description='Calculate edit distance between two strings',
         epilog='end',
         add_help=True,
