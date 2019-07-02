@@ -150,6 +150,12 @@ class Levenshtein(object):
         'delete': 1,
         'replace': 1,
         }
+    def __init__(self, source, target):
+        self.source = source
+        self.target = target
+        self.cost_table = None
+        self.edit_history = None
+
     @staticmethod
     def measure(seq1, seq2, cost_table=None, normalize=False,):
         """Measures Lebenshtein distance between two input sequences.
@@ -325,6 +331,47 @@ class Levenshtein(object):
             ret = Levenshtein.search_edit_path(cost_table, m, n, i, j+1)
             if ret != None:
                 return ['insert'] + ret
+
+
+def LCS(sorce, target, blank):
+    dp = [[0 for i in range(len(target) + 1)] for j in range(len(sorce) + 1)]
+    
+    for i in range(len(sorce)):
+        for j in range(len(target)):
+            if sorce[i] == target[j]:
+                dp[i+1][j+1] = dp[i][j] + 1
+            else:
+                dp[i+1][j+1] = max(dp[i][j+1], dp[i+1][j])
+                
+    # 文字列表示
+    lcs = []
+    last_str_blank = False
+    i = len(sorce)
+    j = len(target)
+    while i >= 1 and j >= 1:
+        if sorce[i-1] == target[j-1]:
+            lcs.append(sorce[i-1])
+            i -= 1
+            j -= 1
+            last_str_blank = False
+        elif dp[i-1][j] > dp[i][j-1]:
+            i -= 1
+            if not last_str_blank:
+                lcs.append(blank)
+                last_str_blank = True
+        else:
+            j -= 1
+            if not last_str_blank:
+                lcs.append(blank)
+                last_str_blank = True
+    # 後ろから順番に取ってくるとテンプレになる        
+    template = lcs[::-1]
+    # if has only blank, return empty string
+    if template == [blank]:
+        template = ['']
+    
+    return template
+
 
 
 if __name__ == '__main__':
