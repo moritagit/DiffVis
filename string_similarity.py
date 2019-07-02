@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 
 
-"""edit_distance.py
+"""string_similarity.py
 
-Calculates edit distance (Levenshtein distance).
+Calculates similarity between two strings.
+And sequence alignment is implemented as a by-product.
+
+Similarity:
+    * Edit distance (Levenshtein distance)
+    * Least Common Subsequence (LCS)
 """
 
 
@@ -14,9 +19,9 @@ import functools
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        prog='edit_distance.py',
-        usage='python edit_distance.py <source> <target> -n -a',
-        description='Calculate edit distance between two strings',
+        prog='string_similarity.py',
+        usage='python string_similarity.py <source> <target> -n -a',
+        description='Calculates similarity between two strings',
         epilog='end',
         add_help=True,
         )
@@ -32,7 +37,7 @@ def main():
         )
     parser.add_argument(
         '-n', '--normalize',
-        help='flag to normalize edit distance',
+        help='flag to normalize similarity',
         action='store_true',
         required=False,
         )
