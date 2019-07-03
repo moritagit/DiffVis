@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
 
-"""string_similarity.py
+"""string_distance.py
 
-Calculates similarity between two strings.
+Calculates distance between two strings.
 And sequence alignment is implemented as a by-product.
 
 Similarity:
     * Edit distance (Levenshtein distance)
-    * Least Common Subsequence (LCS)
+    * Longest Common Subsequence (LCS)
 """
 
 
@@ -19,9 +19,9 @@ import functools
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        prog='string_similarity.py',
-        usage='python string_similarity.py <source> <target> -n -a',
-        description='Calculates similarity between two strings',
+        prog='string_distance.py',
+        usage='python string_distance.py <source> <target> -n -a',
+        description='Calculates distance between two strings',
         epilog='end',
         add_help=True,
         )
@@ -37,7 +37,7 @@ def main():
         )
     parser.add_argument(
         '-n', '--normalize',
-        help='flag to normalize similarity',
+        help='flag to normalize distance',
         action='store_true',
         required=False,
         )
@@ -62,8 +62,8 @@ def main():
         edit_history = Levenshtein.trace_back(cost_table)
         dist = Levenshtein.measure(source, target, cost_table, normalize=False)
         dist_norm = Levenshtein.measure(source, target, cost_table, normalize=True)
-        print(f'Levenshtein Distance: {dist}')
-        print(f'Normalized Levenshtein Distance: {dist_norm:.3f}')
+        print(f'Distance: {dist}')
+        print(f'Normalized Distance: {dist_norm:.3f}')
         print()
         print(format_cost_table(source, target, cost_table))
         print()
@@ -137,6 +137,74 @@ def format_edit_history(edit_history):
     return result
 
 
+def delete_consecutive_duplicates(sequence, string=None):
+    """Delete consecutive duplicates.
+
+    Args:
+        sequence (list[str]): List of strings.
+        string (str): Deleted string.
+            If is None, all the consecutive duplicates are deleted.
+            Defaults to None.
+
+    Returns:
+        sequence_new (list[str]): Cleaned sequence.
+    """
+    if not sequence:
+        return sequence
+
+    sequence_new = [sequence[0]]
+    for i in range(1, len(sequence)):
+        elem_now = sequence[i]
+        elem_last = sequence[i-1]
+        if (elem_now == elem_last):
+            if not string:
+                continue
+            elif (elem_now == string):
+                continue
+        sequence_new.append(elem_now)
+    return sequence_new
+
+
+def extract_common_parts(source, target, edit_history, blank='<blank>'):
+    """Extract common parts between two sequences
+    using edit history got in the process of sequence alignment.
+    Uncommon parts are filled with blank.
+
+    Args:
+        source (iterable): Source sequence.
+        target (iterable): Target sequence.
+        edit_history (tuple): Edit hitory.
+        blank (str): String representing blank.
+
+    Returns:
+        common_parts (list): Common parts of the input sequences.
+            Uncommon parts are filled with blank.
+    """
+    common_parts = []
+    i, j = 0, 0
+    for operation in edit_history:
+        if operation == 'match':
+            common_parts.append(source[i])
+            i += 1
+            j += 1
+        elif operation == 'replace':
+            common_parts.append(blank)
+            i += 1
+            j += 1
+        elif operation == 'delete':
+            common_parts.append(blank)
+            i += 1
+        elif operation == 'insert':
+            common_parts.append(blank)
+            j += 1
+        common_parts = delete_consecutive_duplicates(common_parts, string=blank)
+
+    # if has only blank, return empty string
+    if common_parts == [blank]:
+        common_parts = ['']
+    return common_parts
+
+
 class Levenshtein(object):
     """Calculates Levenshtein distance
     and makes edit history from cost table.
@@ -154,11 +222,19 @@ class Levenshtein(object):
         self.source = source
         self.target = target
         self.cost_table = None
+        self.distance = None
+        self.normalized_distance = None
         self.edit_history = None
+
+    def build(self):
+        self.cost_table = Levenshtein.build_cost_table(self.source, self.target)
+        self.edit_history = Levenshtein.trace_back(self.cost_table)
+        self.distance = Levenshtein.measure(self.source, self.target, self.cost_table, normalize=False)
+        self.normalized_distance = Levenshtein.measure(self.source, self.target, self.cost_table, normalize=True)
 
     @staticmethod
     def measure(seq1, seq2, cost_table=None, normalize=False,):
-        """Measures Lebenshtein distance between two input sequences.
+        """Measures Levenshtein distance between two input sequences.
 
         Args:
             seq1 (iterable): Source sequence.
@@ -253,8 +329,6 @@ class Levenshtein(object):
 
         Args:
             cost_table (tuple[tuple[int]]): Cost table.
-            i (int): Row index of cost table.
-            j (int): Column index of cost table.
 
         Returns:
             edit_history (tuple): History of edition.
@@ -333,45 +407,122 @@ class Levenshtein(object):
                 return ['insert'] + ret
 
 
-def LCS(sorce, target, blank):
-    dp = [[0 for i in range(len(target) + 1)] for j in range(len(sorce) + 1)]
-    
-    for i in range(len(sorce)):
-        for j in range(len(target)):
-            if sorce[i] == target[j]:
-                dp[i+1][j+1] = dp[i][j] + 1
-            else:
-                dp[i+1][j+1] = max(dp[i][j+1], dp[i+1][j])
-                
-    # 文字列表示
-    lcs = []
-    last_str_blank = False
-    i = len(sorce)
-    j = len(target)
-    while i >= 1 and j >= 1:
-        if sorce[i-1] == target[j-1]:
-            lcs.append(sorce[i-1])
-            i -= 1
-            j -= 1
-            last_str_blank = False
-        elif dp[i-1][j] > dp[i][j-1]:
-            i -= 1
-            if not last_str_blank:
-                lcs.append(blank)
-                last_str_blank = True
-        else:
-            j -= 1
-            if not last_str_blank:
-                lcs.append(blank)
-                last_str_blank = True
-    # 後ろから順番に取ってくるとテンプレになる        
-    template = lcs[::-1]
-    # if has only blank, return empty string
-    if template == [blank]:
-        template = ['']
-    
-    return template
+class LongestCommonSubsequence(object):
+    """
+    """
+    def __init__(self, source, target):
+        self.source = source
+        self.target = target
+        self.cost_table = None
+        self.edit_history = None
 
+    @staticmethod
+    def measure(seq1, seq2, cost_table=None, normalize=False,):
+        """Measures edit distance between two input sequences.
+
+        Args:
+            seq1 (iterable): Source sequence.
+            seq2 (iterable): Target sequence.
+            cost_table (tuple[tuple]): Cost table.
+                If is None, newly built.
+                Defaults to None.
+            normalize (bool):
+                Determines whether to normalize edit distance,
+                deviding by longer length of the input two sequences.
+                Defaults to False.
+
+        Returns:
+            distance (float): Edit distance.
+        """
+        m, n = len(seq1), len(seq2)
+        len_max = max(m, n)
+        if len_max == 0:
+            return 0
+        if not cost_table:
+            cost_table = LongestCommonSubsequence.build_cost_table(seq1, seq2)
+        score = cost_table[m][n]
+        if normalize:
+            score /= len_max
+        return score
+
+    @staticmethod
+    def init_cost_table(m, n):
+        """Initializes cost table (((m+1) x (n+1)) matrix).
+
+        Args:
+            m (int): Length of source sequence.
+            n (int): Length of target sequence.
+
+        Returns:
+            cost_table (list[list]): Cost table.
+        """
+        cost_table = [[0] * (n+1) for _ in range(m+1)]
+        return cost_table
+
+    @staticmethod
+    def build_cost_table(source, target):
+        """Builds cost table.
+
+        Args:
+            source (iterable): Source sequence.
+            target (iterable): Target sequence.
+
+        Returns:
+            cost_table (tuple[tuple[int]]): Cost table.
+        """
+        m, n = len(source), len(target)
+        cost_table = LongestCommonSubsequence.init_cost_table(m, n)
+        for i in range(m):
+            for j in range(n):
+                if source[i] == target[j]:
+                    cost_table[i+1][j+1] = cost_table[i][j] + 1
+                else:
+                    cost_table[i+1][j+1] = max(cost_table[i][j+1], cost_table[i+1][j])
+        cost_table = tuple([tuple(row) for row in cost_table])
+        return cost_table
+
+    @staticmethod
+    def trace_back(cost_table, i=0, j=0):
+        """Traces back cost table and make edit history.
+
+        Args:
+            cost_table (tuple[tuple[int]]): Cost table.
+
+        Returns:
+            edit_history (tuple): History of edition.
+        """
+
+        m = len(cost_table) - 1
+        n = len(cost_table[0]) - 1
+
+
+        # 文字列表示
+        lcs = []
+        last_str_blank = False
+        i = len(sorce)
+        j = len(target)
+        while i >= 1 and j >= 1:
+            if sorce[i-1] == target[j-1]:
+                lcs.append(sorce[i-1])
+                i -= 1
+                j -= 1
+                last_str_blank = False
+            elif dp[i-1][j] > dp[i][j-1]:
+                i -= 1
+                if not last_str_blank:
+                    lcs.append(blank)
+                    last_str_blank = True
+            else:
+                j -= 1
+                if not last_str_blank:
+                    lcs.append(blank)
+                    last_str_blank = True
+        # 後ろから順番に取ってくるとテンプレになる        
+        template = lcs[::-1]
+
+        if edit_history:
+            edit_history = tuple(edit_history)
+        return edit_history
 
 
 if __name__ == '__main__':
