@@ -228,7 +228,7 @@ class Levenshtein(object):
 
     def build(self):
         self.cost_table = Levenshtein.build_cost_table(self.source, self.target)
-        self.edit_history = Levenshtein.trace_back(self.cost_table)
+        self.edit_history = Levenshtein.trace_back(self.source, self.target, self.cost_table)
         self.distance = Levenshtein.measure(self.source, self.target, self.cost_table, normalize=False)
         self.normalized_distance = Levenshtein.measure(self.source, self.target, self.cost_table, normalize=True)
 
@@ -324,7 +324,7 @@ class Levenshtein(object):
         return cost_table
 
     @staticmethod
-    def trace_back(cost_table, i=0, j=0):
+    def trace_back(source, target, cost_table):
         """Traces back cost table and make edit history.
 
         Args:
@@ -336,7 +336,7 @@ class Levenshtein(object):
         cost_table = Levenshtein.pad_cost_table(cost_table)
         m = len(cost_table) - 1
         n = len(cost_table[0]) - 1
-        edit_history = Levenshtein.search_edit_path(cost_table, m, n, i, j)
+        edit_history = Levenshtein.search_edit_path(cost_table, m, n)
         if edit_history:
             edit_history = tuple(edit_history)
         return edit_history
@@ -408,13 +408,20 @@ class Levenshtein(object):
 
 
 class LongestCommonSubsequence(object):
-    """
-    """
+    """Solves longest common subsequence problem."""
     def __init__(self, source, target):
         self.source = source
         self.target = target
         self.cost_table = None
+        self.distance = None
+        self.normalized_distance = None
         self.edit_history = None
+
+    def build(self):
+        self.cost_table = Levenshtein.build_cost_table(self.source, self.target)
+        self.edit_history = Levenshtein.trace_back(self.source, self.target, self.cost_table)
+        self.distance = Levenshtein.measure(self.source, self.target, self.cost_table, normalize=False)
+        self.normalized_distance = Levenshtein.measure(self.source, self.target, self.cost_table, normalize=True)
 
     @staticmethod
     def measure(seq1, seq2, cost_table=None, normalize=False,):
@@ -482,8 +489,8 @@ class LongestCommonSubsequence(object):
         return cost_table
 
     @staticmethod
-    def trace_back(cost_table, i=0, j=0):
-        """Traces back cost table and make edit history.
+    def trace_back(source, target, cost_table):
+        """Traces cost table back and make edit history.
 
         Args:
             cost_table (tuple[tuple[int]]): Cost table.
@@ -491,34 +498,20 @@ class LongestCommonSubsequence(object):
         Returns:
             edit_history (tuple): History of edition.
         """
-
-        m = len(cost_table) - 1
-        n = len(cost_table[0]) - 1
-
-
-        # 文字列表示
-        lcs = []
-        last_str_blank = False
-        i = len(sorce)
-        j = len(target)
-        while i >= 1 and j >= 1:
-            if sorce[i-1] == target[j-1]:
-                lcs.append(sorce[i-1])
+        m, n = len(source), len(target)
+        i, j = m, n
+        edit_history = []
+        while (i >= 1) and (j >= 1):
+            if source[i-1] == target[j-1]:
+                edit_history.append('match')
                 i -= 1
                 j -= 1
-                last_str_blank = False
-            elif dp[i-1][j] > dp[i][j-1]:
+            elif cost_table[i-1][j] > cost_table[i][j-1]:
+                edit_history.append('delete')
                 i -= 1
-                if not last_str_blank:
-                    lcs.append(blank)
-                    last_str_blank = True
             else:
+                edit_history.append('insert')
                 j -= 1
-                if not last_str_blank:
-                    lcs.append(blank)
-                    last_str_blank = True
-        # 後ろから順番に取ってくるとテンプレになる        
-        template = lcs[::-1]
 
         if edit_history:
             edit_history = tuple(edit_history)
