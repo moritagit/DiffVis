@@ -9,7 +9,8 @@ Not only string, but also list of words (tokenized sentence) can be used.
 """
 
 
-from .edit_distance import Levenshtein, format_cost_table, format_edit_history
+from .string_distance import Levenshtein, LongestCommonSubsequence
+from .string_distance import format_cost_table, format_edit_history, extract_common_parts
 from .formatter import ConsoleFormatter, HTMLFormatter, HTMLTabFormatter
 
 
@@ -17,7 +18,7 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(
         prog='diffvis.py',
-        usage='python edit_distance.py <source> <target> -p',
+        usage='python diffvis.py <source> <target> -p',
         description='Visualize difference between two strings',
         epilog='end',
         add_help=True,
@@ -38,65 +39,23 @@ def main():
         action='store_true',
         required=False,
         )
+    parser.add_argument(
+        '-m', '--mode',
+        help='sequence alignment algorythm. Levenshtein or LCS can be used.',
+        action='store',
+        required=False,
+        default='Levenshtein',
+        )
 
     args = parser.parse_args()
     source = args.source
     target = args.target
     padding = args.padding
+    mode = args.mode
 
-    dv = DiffVis(source, target)
+    dv = DiffVis(source, target, alignment=mode)
     dv.build()
     print(dv.visualize(mode='console', padding=padding))
-
-
-def make_diff2blank(source, target, edit_history, blank='<blank>'):
-    """Converts unmatch parts between source and target to blank.
-
-    Args:
-        source (iterable): Source sequence.
-        target (iterable): Target sequence.
-        edit_history (tuple[str]): Edit history.
-        blank (str): String for blank. Defaluts to '<blank>'.
-
-    Returns:
-        template (list[str]): Sequence that has common parts of source and target, and has blank in non-common parts.
-    """
-    template = []
-    i, j = 0, 0
-    for operation in edit_history:
-        if operation == 'match':
-            template.append(source[i])
-            i += 1
-            j += 1
-        elif operation == 'replace':
-            template.append(blank)
-            i += 1
-            j += 1
-        elif operation == 'delete':
-            template.append(blank)
-            i += 1
-        elif operation == 'insert':
-            template.append(blank)
-            j += 1
-
-    if not template:
-        return template
-
-    # delete duplicates of <blank>
-    template_new = [template[0]]
-    for i in range(1, len(template)):
-        elem_now = template[i]
-        elem_last = template[i-1]
-        if (elem_now == blank) and (elem_last == blank):
-            continue
-        else:
-            template_new.append(elem_now)
-    template = template_new
-
-    # if only blank, return empty string
-    if template == [blank]:
-        template = ['']
-    return template
 
 
 class DiffVis(object):
@@ -105,28 +64,41 @@ class DiffVis(object):
     Args:
         source (iterable): Source sequence.
         target (iterable): Target sequence.
+        alignment (str): Sequence alignment model name.
+            Levenshtein or LCS can be chosen now.
+            Defaults to Levenshtein.
 
     Attributes:
+        source (iterable): Source sequence.
+        target (iterable): Target sequence.
         cost_table (tuple[tuple[int]]): Cost table.
         edit_history (tuple): History of edition.
-        __source (iterable): Source sequence.
-        __target (iterable): Target sequence.
     """
     COLOR_SETTINGS = {
         'base': 'green',
         'source': 'red',
         'target': 'blue',
         }
-    def __init__(self, source, target):
-        self.__source = source
-        self.__target = target
+    def __init__(self, source, target, alignment='Levenshtein'):
+        self.source = source
+        self.target = target
         self.cost_table = None
         self.edit_history = None
+        self.template = None
+
+        if alignment in ['Levenshtein', 'EditDistance']:
+            self.Model = Levenshtein
+        elif alignment in ['LongestCommonSubsequence', 'LCS']:
+            self.Model = LongestCommonSubsequence
+        else:
+            raise ValueError(f'Unknown alignment mode: {alignment}')
 
     def build(self):
         """Builds cost table and edit history."""
-        self.cost_table = Levenshtein.build_cost_table(self.__source, self.__target)
-        self.edit_history = Levenshtein.trace_back(self.cost_table)
+        model = self.Model(self.source, self.target)
+        model.build()
+        self.cost_table = model.cost_table
+        self.edit_history = model.edit_history
 
     def distance(self, normalize=False):
         """Measures Lebenshtein distance between source and target.
@@ -140,8 +112,8 @@ class DiffVis(object):
         Returns:
             dist (float): Levenshtein distance.
         """
-        dist = Levenshtein.measure(
-            self.__source, self.__target,
+        dist = self.Model.measure(
+            self.source, self.target,
             cost_table=self.cost_table,
             normalize=normalize,
             )
@@ -157,30 +129,31 @@ class DiffVis(object):
         dist = len([operation for operation in self.edit_history if operation != 'match'])
         return dist
 
-    def template(self, use_str=False, blank='<blank>'):
+    def make_template(self, return_str=False, blank='<blank>'):
         """Make template from source and target
         by filling the difference with 'blank'.
 
         Args:
-            use_str (bool): Determines whether to return str or list.
+            return_str (bool): Determines whether to return str or list.
                 Defaults to False.
             blank (str): String for blank. Defaluts to '<blank>'.
 
         Returns:
             template (list[str]): Sequence that has common parts of source and target, and has blank in non-common parts.
         """
-        tmp = make_diff2blank(
-            self.__source,
-            self.__target,
+        template = extract_common_parts(
+            self.source,
+            self.target,
             self.edit_history,
             blank=blank,
             )
-        if use_str:
-            tmp = ''.join(tmp)
-        return tmp
+        self.template = template
+        if return_str:
+            template = ''.join(template)
+        return template
 
     def format_cost_table(self):
-        return format_cost_table(self.__source, self.__target, self.cost_table)
+        return format_cost_table(self.source, self.target, self.cost_table)
 
     def format_edit_history(self):
         return format_edit_history(self.edit_history)
@@ -231,8 +204,8 @@ class DiffVis(object):
         Returns:
             output (str): Output.
         """
-        source = self.__source
-        target = self.__target
+        source = self.source
+        target = self.target
         color_base = DiffVis.COLOR_SETTINGS['base']
         color_source = DiffVis.COLOR_SETTINGS['source']
         color_target = DiffVis.COLOR_SETTINGS['target']
