@@ -47,27 +47,41 @@ def main():
         action='store_true',
         required=False,
         )
+    parser.add_argument(
+        '-m', '--mode',
+        help='sequence alignment algorythm. Levenshtein or LCS can be used.',
+        action='store',
+        required=False,
+        default='Levenshtein',
+        )
 
     args = parser.parse_args()
     source = args.source
     target = args.target
     normalize = args.normalize
     output_all = args.all
+    mode = args.mode
+
+    if mode in ['Levenshtein', 'EditDistance']:
+        Model = Levenshtein
+    elif mode in ['LongestCommonSubsequence', 'LCS']:
+        Model = LongestCommonSubsequence
+    else:
+        raise ValueError(f'Unknown mode: {mode}')
 
     if not output_all:
-        distance = Levenshtein.measure(source, target, normalize=normalize)
+        distance = Model.measure(source, target, normalize=normalize)
         print(distance)
     else:
-        cost_table = Levenshtein.build_cost_table(source, target)
-        edit_history = Levenshtein.trace_back(cost_table)
-        dist = Levenshtein.measure(source, target, cost_table, normalize=False)
-        dist_norm = Levenshtein.measure(source, target, cost_table, normalize=True)
-        print(f'Distance: {dist}')
-        print(f'Normalized Distance: {dist_norm:.3f}')
+        print(f'Model: {mode}')
+        model = Model(source, target)
+        model.build()
+        print(f'Distance: {model.distance}')
+        print(f'Normalized Distance: {model.normalized_distance:.3f}')
         print()
-        print(format_cost_table(source, target, cost_table))
+        print(format_cost_table(source, target, model.cost_table))
         print()
-        print(format_edit_history(edit_history))
+        print(format_edit_history(model.edit_history))
     return
 
 
@@ -418,10 +432,10 @@ class LongestCommonSubsequence(object):
         self.edit_history = None
 
     def build(self):
-        self.cost_table = Levenshtein.build_cost_table(self.source, self.target)
-        self.edit_history = Levenshtein.trace_back(self.source, self.target, self.cost_table)
-        self.distance = Levenshtein.measure(self.source, self.target, self.cost_table, normalize=False)
-        self.normalized_distance = Levenshtein.measure(self.source, self.target, self.cost_table, normalize=True)
+        self.cost_table = LongestCommonSubsequence.build_cost_table(self.source, self.target)
+        self.edit_history = LongestCommonSubsequence.trace_back(self.source, self.target, self.cost_table)
+        self.distance = LongestCommonSubsequence.measure(self.source, self.target, self.cost_table, normalize=False)
+        self.normalized_distance = LongestCommonSubsequence.measure(self.source, self.target, self.cost_table, normalize=True)
 
     @staticmethod
     def measure(seq1, seq2, cost_table=None, normalize=False,):
