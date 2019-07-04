@@ -115,6 +115,7 @@ class DiffVis(object):
         dist = self.Model.measure(
             self.source, self.target,
             cost_table=self.cost_table,
+            edit_history=self.edit_history,
             normalize=normalize,
             )
         return dist

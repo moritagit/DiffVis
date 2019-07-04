@@ -243,11 +243,19 @@ class Levenshtein(object):
     def build(self):
         self.cost_table = Levenshtein.build_cost_table(self.source, self.target)
         self.edit_history = Levenshtein.trace_back(self.source, self.target, self.cost_table)
-        self.distance = Levenshtein.measure(self.source, self.target, self.cost_table, normalize=False)
-        self.normalized_distance = Levenshtein.measure(self.source, self.target, self.cost_table, normalize=True)
+        self.distance = Levenshtein.measure(
+            self.source, self.target,
+            cost_table=self.cost_table,
+            normalize=False,
+            )
+        self.normalized_distance = Levenshtein.measure(
+            self.source, self.target,
+            cost_table=self.cost_table,
+            normalize=True,
+            )
 
     @staticmethod
-    def measure(seq1, seq2, cost_table=None, normalize=False,):
+    def measure(seq1, seq2, cost_table=None, edit_history=None, normalize=False,):
         """Measures Levenshtein distance between two input sequences.
 
         Args:
@@ -255,6 +263,9 @@ class Levenshtein(object):
             seq2 (iterable): Target sequence.
             cost_table (tuple[tuple]): Cost table.
                 If is None, newly built.
+                Defaults to None.
+            edit_history (tuple): History of edition.
+                This is not used for the calculation.
                 Defaults to None.
             normalize (bool):
                 Determines whether to normalize Levenshtein distance,
@@ -268,8 +279,10 @@ class Levenshtein(object):
         len_max = max(m, n)
         if len_max == 0:
             return 0
+
         if not cost_table:
             cost_table = Levenshtein.build_cost_table(seq1, seq2)
+
         distance = cost_table[m][n]
         if normalize:
             distance /= len_max
@@ -342,6 +355,8 @@ class Levenshtein(object):
         """Traces back cost table and make edit history.
 
         Args:
+            source (iterable): Source sequence.
+            target (iterable): Target sequence.
             cost_table (tuple[tuple[int]]): Cost table.
 
         Returns:
@@ -434,17 +449,28 @@ class LongestCommonSubsequence(object):
     def build(self):
         self.cost_table = LongestCommonSubsequence.build_cost_table(self.source, self.target)
         self.edit_history = LongestCommonSubsequence.trace_back(self.source, self.target, self.cost_table)
-        self.distance = LongestCommonSubsequence.measure(self.source, self.target, self.cost_table, normalize=False)
-        self.normalized_distance = LongestCommonSubsequence.measure(self.source, self.target, self.cost_table, normalize=True)
+        self.distance = LongestCommonSubsequence.measure(
+            self.source, self.target,
+            edit_history=self.edit_history,
+            normalize=False,
+            )
+        self.normalized_distance = LongestCommonSubsequence.measure(
+            self.source, self.target,
+            edit_history=self.edit_history,
+            normalize=True,
+            )
 
     @staticmethod
-    def measure(seq1, seq2, cost_table=None, normalize=False,):
+    def measure(seq1, seq2, cost_table=None, edit_history=None, normalize=False,):
         """Measures edit distance between two input sequences.
 
         Args:
             seq1 (iterable): Source sequence.
             seq2 (iterable): Target sequence.
             cost_table (tuple[tuple]): Cost table.
+                This is not used for the calculation if edit_history is input.
+                Defaults to None.
+            edit_history (tuple): History of edition.
                 If is None, newly built.
                 Defaults to None.
             normalize (bool):
@@ -459,12 +485,16 @@ class LongestCommonSubsequence(object):
         len_max = max(m, n)
         if len_max == 0:
             return 0
-        if not cost_table:
-            cost_table = LongestCommonSubsequence.build_cost_table(seq1, seq2)
-        score = cost_table[m][n]
+
+        if not edit_history:
+            if not cost_table:
+                cost_table = LongestCommonSubsequence.build_cost_table(seq1, seq2)
+            edit_history = LongestCommonSubsequence.trace_back(seq1, seq2, cost_table)
+
+        distance = len([operation for operation in edit_history if operation != 'match'])
         if normalize:
-            score /= len_max
-        return score
+            distance /= len_max
+        return distance
 
     @staticmethod
     def init_cost_table(m, n):
@@ -507,6 +537,8 @@ class LongestCommonSubsequence(object):
         """Traces cost table back and make edit history.
 
         Args:
+            source (iterable): Source sequence.
+            target (iterable): Target sequence.
             cost_table (tuple[tuple[int]]): Cost table.
 
         Returns:
@@ -523,10 +555,21 @@ class LongestCommonSubsequence(object):
             elif cost_table[i-1][j] > cost_table[i][j-1]:
                 edit_history.append('delete')
                 i -= 1
-            else:
+            elif cost_table[i-1][j] < cost_table[i][j-1]:
                 edit_history.append('insert')
                 j -= 1
+            else:
+                edit_history.append('replace')
+                i -= 1
+                j -= 1
 
+            # if i or j is 0
+            if (i != 0) and (j == 0):
+                edit_history.extend(['delete'] * i)
+            elif (i == 0) and (j != 0):
+                edit_history.extend(['insert'] * j)
+
+        edit_history.reverse()
         if edit_history:
             edit_history = tuple(edit_history)
         return edit_history
