@@ -68,6 +68,9 @@ class Formatter(object):
         """Arange."""
         return text
 
+    def output(self, text):
+        return text
+
     def concatenate(self, text1, text2):
         """Concatenate outputs for comparison."""
         return '\n'.join([text1, text2])
@@ -124,6 +127,11 @@ class HTMLTabFormatter(Formatter):
 
     def form(self, text):
         text = f'<td style="text-align=center">{text}</td>'
+        return text
+
+    def output(self, text):
+        text = f'<tr>{text}</tr>'
+        text = f'<table style="table-layout: fixed;">{text}</table>'
         return text
 
     def concatenate(self, text1, text2):
