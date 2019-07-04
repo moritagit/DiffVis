@@ -84,9 +84,6 @@ class HTMLFormatter(Formatter):
         'cyan',
         'white',
     ]
-    def escape(self, text):
-        text = html.escape(text)
-        return text
 
     def pad(self, text, length=0):
         return _pad_sequence(text, length)
